@@ -7,9 +7,14 @@ import openpi.transforms as transforms
 
 
 def _parse_image(img):
-    """LeRobot stores images as float32 (C,H,W); openpi expects uint8 (H,W,C)."""
-    if isinstance(img, np.ndarray) and img.dtype != np.uint8:
+    """LeRobot stores images as float32 (C,H,W) tensor or ndarray; openpi expects uint8 (H,W,C) ndarray."""
+    import torch
+    if isinstance(img, torch.Tensor):
+        img = img.numpy()
+    # Now it's ndarray — convert float [0,1] CHW → uint8 HWC
+    if img.dtype != np.uint8:
         img = (img * 255).astype(np.uint8)
+    if img.ndim == 3 and img.shape[0] in (1, 3, 4):  # CHW → HWC
         img = np.transpose(img, (1, 2, 0))
     return img
 
@@ -20,36 +25,64 @@ class UR10Inputs(transforms.DataTransformFn):
     action_dim: int = 7
     model_type: _model.ModelType = _model.ModelType.PI0_FAST  # pi0.5 = PI0_FAST
 
+    # def __call__(self, data: dict) -> dict:
+    #     # observation.state is already a flat (7,) vector: [j0..j5, gripper]
+    #     state = np.asarray(data["observation.state"], dtype=np.float32)
+
+    #     # Images come in after repack — keys are "top_rgb" and "wrist_rgb"
+    #     top_image   = _parse_image(data["observation.images.cam_high"])   # D415 top camera
+    #     wrist_image = _parse_image(data["observation.images.cam_right_wrist"]) # D435i wrist camera
+
+    #     inputs = {
+    #         "state": state,
+    #         "image": {
+    #             "base_0_rgb":        top_image,
+    #             "left_wrist_0_rgb":  wrist_image,
+    #             # No right wrist on UR10 — fill the slot with zeros
+    #             "right_wrist_0_rgb": np.zeros_like(top_image),
+    #         },
+    #         "image_mask": {
+    #             "base_0_rgb":       np.True_,
+    #             "left_wrist_0_rgb": np.True_,
+    #             # pi0.5 (PI0_FAST) attends to all 3 image slots; set True so
+    #             # the model doesn't ignore it. For pi0 base set False instead.
+    #             "right_wrist_0_rgb": np.True_ if self.model_type == _model.ModelType.PI0_FAST else np.False_,
+    #         },
+    #     }
+
+    #     if "actions" in data:
+    #         inputs["actions"] = np.asarray(data["actions"], dtype=np.float32)
+    #     if "prompt" in data:
+    #         inputs["prompt"] = data["prompt"]
+    #     if "prompt" not in data or not data["prompt"]:
+    #         inputs["prompt"] = "pick up the object and place it in the box"
+
+    #     return inputs
     def __call__(self, data: dict) -> dict:
-        # observation.state is already a flat (7,) vector: [j0..j5, gripper]
         state = np.asarray(data["observation.state"], dtype=np.float32)
 
-        # Images come in after repack — keys are "top_rgb" and "wrist_rgb"
-        top_image   = _parse_image(data["observation.images.cam_high"])   # D415 top camera
-        wrist_image = _parse_image(data["observation.images.cam_right_wrist"]) # D435i wrist camera
+        top_image   = _parse_image(data["observation.images.cam_high"])    # ← renamed by RepackTransform
+        wrist_image = _parse_image(data["observation.images.cam_right_wrist"])  # ← renamed by RepackTransform
 
         inputs = {
             "state": state,
             "image": {
                 "base_0_rgb":        top_image,
                 "left_wrist_0_rgb":  wrist_image,
-                # No right wrist on UR10 — fill the slot with zeros
                 "right_wrist_0_rgb": np.zeros_like(top_image),
             },
             "image_mask": {
-                "base_0_rgb":       np.True_,
-                "left_wrist_0_rgb": np.True_,
-                # pi0.5 (PI0_FAST) attends to all 3 image slots; set True so
-                # the model doesn't ignore it. For pi0 base set False instead.
-                "right_wrist_0_rgb": np.True_ if self.model_type == _model.ModelType.PI0_FAST else np.False_,
+                "base_0_rgb":        np.True_,
+                "left_wrist_0_rgb":  np.True_,
+                "right_wrist_0_rgb": np.False_,  # zero-filled slot, mask it out
             },
         }
 
         if "actions" in data:
             inputs["actions"] = np.asarray(data["actions"], dtype=np.float32)
-        if "prompt" in data:
+        if "prompt" in data and data["prompt"]:
             inputs["prompt"] = data["prompt"]
-        if "prompt" not in data or not data["prompt"]:
+        else:
             inputs["prompt"] = "pick up the object and place it in the box"
 
         return inputs

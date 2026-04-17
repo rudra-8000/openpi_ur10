@@ -252,7 +252,7 @@ class LeRobotUR10DataConfig(DataConfigFactory):
                         "observation.images.cam_high":        "observation.images.cam_high",
                         "observation.images.cam_right_wrist": "observation.images.cam_right_wrist",
                         "observation.state":                  "observation.state",
-                        "action":                             "action",
+                        "action":                             "actions",
                         "prompt":                             "prompt",
                     }
                 )
