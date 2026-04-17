@@ -7,6 +7,7 @@ import difflib
 import logging
 import pathlib
 from typing import Any, Literal, Protocol, TypeAlias
+from pathlib import Path
 
 import etils.epath as epath
 import flax.nnx as nnx
@@ -1064,29 +1065,25 @@ _CONFIGS = [
             repo_id="rudy8k/grasp_place",
             base_config=DataConfig(prompt_from_task=True),
             assets=AssetsConfig(
-                # Reuse UR5e normalization stats from the pi0.5 base checkpoint.
-                # These are close enough for UR10 and help with transfer.
-                # assets_dir="gs://openpi-assets/checkpoints/pi0_base/assets",
-                # Make sure you're pointing to pi0_fast_base, not pi0_base
                 assets_dir="gs://openpi-assets/checkpoints/pi0_fast_base/assets",
                 asset_id="ur5e",
             ),
-            # default_prompt="grasp the object and place it in the box",
-            # repack_transforms=_transforms.Group(
-            #     inputs=[
-            #         _transforms.RepackTransform(
-            #             {
-            #                 "observation/exterior_image_1_left": "observation/image",
-            #                 "observation/wrist_image_left": "observation/wrist_image",
-            #                 "observation/joint_position": "observation/joint_position",
-            #                 "observation/gripper_position": "observation/gripper_position",
-            #                 "actions": "actions",
-            #                 "prompt": "prompt",
-            #             }
-            #         )
-            #     ]
-            # ),
         ),
+        # data=LeRobotUR10DataConfig(
+        #     repo_id="rudy8k/grasp_place",
+        #     base_config=DataConfig(
+        #         prompt_from_task=True,
+        #         # local_dir="/home_local/rudra_1/rudra/data/grasp_place_converted",
+        #     ),
+        #     assets=AssetsConfig(
+        #         # Reuse UR5e normalization stats from the pi0.5 base checkpoint.
+        #         # These are close enough for UR10 and help with transfer.
+        #         # assets_dir="gs://openpi-assets/checkpoints/pi0_base/assets",
+        #         # Make sure you're pointing to pi0_fast_base, not pi0_base
+        #         assets_dir="gs://openpi-assets/checkpoints/pi0_fast_base/assets",
+        #         asset_id="ur5e",
+        #     ),
+        # ),
         weight_loader=weight_loaders.CheckpointWeightLoader(
             # "gs://openpi-assets/checkpoints/pi0_base/params"
             "gs://openpi-assets/checkpoints/pi0_fast_base/params"
