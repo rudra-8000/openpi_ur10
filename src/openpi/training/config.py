@@ -249,10 +249,10 @@ class LeRobotUR10DataConfig(DataConfigFactory):
             inputs=[
                 _transforms.RepackTransform(
                     {
-                        "observation.images.cam_high":        "top_rgb",
-                        "observation.images.cam_right_wrist": "wrist_rgb",
-                        "observation.state":                  "state",
-                        "action":                             "actions",
+                        "observation.images.cam_high":        "observation.images.cam_high",
+                        "observation.images.cam_right_wrist": "observation.images.cam_right_wrist",
+                        "observation.state":                  "observation.state",
+                        "action":                             "action",
                         "prompt":                             "prompt",
                     }
                 )
@@ -275,11 +275,18 @@ class LeRobotUR10DataConfig(DataConfigFactory):
 
         model_transforms = ModelTransformFactory(default_prompt=self.default_prompt)(model_config)
 
+        # return dataclasses.replace(
+        #     self.create_base_config(assets_dirs, model_config),
+        #     repack_transforms=repack_transform,
+        #     data_transforms=data_transforms,
+        #     model_transforms=model_transforms,
+        # )
         return dataclasses.replace(
             self.create_base_config(assets_dirs, model_config),
             repack_transforms=repack_transform,
             data_transforms=data_transforms,
             model_transforms=model_transforms,
+            action_sequence_keys=("action",),  # ← match the actual parquet column name
         )
 
 
@@ -1062,11 +1069,16 @@ _CONFIGS = [
             action_expert_variant="gemma_300m_lora",
         ),
         data=LeRobotUR10DataConfig(
-            repo_id="rudy8k/grasp_place",
-            base_config=DataConfig(prompt_from_task=True),
+            # repo_id="rudy8k/grasp_place",
+            repo_id="/home_local/rudra_1/rudra/data/grasp_place_v21",
+            base_config=DataConfig(
+                prompt_from_task=True,
+                action_sequence_keys=("action",),  # ← add this
+            ),
             assets=AssetsConfig(
                 assets_dir="gs://openpi-assets/checkpoints/pi0_fast_base/assets",
                 asset_id="ur5e",
+                # local_dir="/home_local/rudra_1/.cache/huggingface/hub/datasets--rudy8k--grasp_place/snapshots/3c881d3c002d680a2550a8876ca08249b721d23d",
             ),
         ),
         # data=LeRobotUR10DataConfig(

@@ -22,11 +22,11 @@ class UR10Inputs(transforms.DataTransformFn):
 
     def __call__(self, data: dict) -> dict:
         # observation.state is already a flat (7,) vector: [j0..j5, gripper]
-        state = np.asarray(data["state"], dtype=np.float32)
+        state = np.asarray(data["observation.state"], dtype=np.float32)
 
         # Images come in after repack — keys are "top_rgb" and "wrist_rgb"
-        top_image   = _parse_image(data["top_rgb"])   # D415 top camera
-        wrist_image = _parse_image(data["wrist_rgb"]) # D435i wrist camera
+        top_image   = _parse_image(data["observation.images.cam_high"])   # D415 top camera
+        wrist_image = _parse_image(data["observation.images.cam_right_wrist"]) # D435i wrist camera
 
         inputs = {
             "state": state,
