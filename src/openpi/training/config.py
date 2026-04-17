@@ -20,6 +20,10 @@ import openpi.models.tokenizer as _tokenizer
 import openpi.policies.aloha_policy as aloha_policy
 import openpi.policies.droid_policy as droid_policy
 import openpi.policies.libero_policy as libero_policy
+#added by rudra
+import openpi.policies.ur10_policy as ur10_policy
+
+
 import openpi.shared.download as _download
 import openpi.shared.normalize as _normalize
 import openpi.training.droid_rlds_dataset as droid_rlds_dataset
@@ -29,8 +33,12 @@ import openpi.training.optimizer as _optimizer
 import openpi.training.weight_loaders as weight_loaders
 import openpi.transforms as _transforms
 
+
+
 ##change added by RUDRA
-from openpi.training import ur10_config as _ur10_config  # noqa: F401, E402
+
+# from openpi.training import ur10_config as _ur10_config  # noqa: F401, E402
+# from openpi.training.ur10_config import LeRobotUR10DataConfig  # noqa: F401, E402
 
 ModelType: TypeAlias = _model.ModelType
 # Work around a tyro issue with using nnx.filterlib.Filter directly.
@@ -225,6 +233,52 @@ class SimpleDataConfig(DataConfigFactory):
             self.create_base_config(assets_dirs, model_config),
             data_transforms=self.data_transforms(model_config),
             model_transforms=self.model_transforms(model_config),
+        )
+
+## UR10 Config
+
+@dataclasses.dataclass(frozen=True)
+class LeRobotUR10DataConfig(DataConfigFactory):
+    default_prompt: str | None = "grasp the object and place it in the box"
+
+
+    @override
+    def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
+        repack_transform = _transforms.Group(
+            inputs=[
+                _transforms.RepackTransform(
+                    {
+                        "observation.images.cam_high":        "top_rgb",
+                        "observation.images.cam_right_wrist": "wrist_rgb",
+                        "observation.state":                  "state",
+                        "action":                             "actions",
+                        "prompt":                             "prompt",
+                    }
+                )
+            ]
+        )
+
+        data_transforms = _transforms.Group(
+            inputs=[ur10_policy.UR10Inputs(
+                action_dim=model_config.action_dim,
+                model_type=model_config.model_type,
+            )],
+            outputs=[ur10_policy.UR10Outputs()],
+        )
+
+        delta_action_mask = _transforms.make_bool_mask(6, -1)
+        data_transforms = data_transforms.push(
+            inputs=[_transforms.DeltaActions(delta_action_mask)],
+            outputs=[_transforms.AbsoluteActions(delta_action_mask)],
+        )
+
+        model_transforms = ModelTransformFactory(default_prompt=self.default_prompt)(model_config)
+
+        return dataclasses.replace(
+            self.create_base_config(assets_dirs, model_config),
+            repack_transforms=repack_transform,
+            data_transforms=data_transforms,
+            model_transforms=model_transforms,
         )
 
 
@@ -972,48 +1026,78 @@ _CONFIGS = [
     ## UR10 config added by RUDRA
 
     # pi05_ur10 = TrainConfig(
-    TrainConfig(
-        name="pi05_ur10",
-        model=pi0_fast.Pi0FastConfig(),          # pi0.5 model
-        data=LeRobotUR10DataConfig(
-            repo_id="rudra-8000/grasp_place",    # your HuggingFace dataset ID
-            base_config=DataConfig(
-                prompt_from_task=True,           # reads task string as language prompt
-            ),
-            assets=AssetsConfig(
-                # Reuse UR5e normalization stats from the pi0.5 base checkpoint.
-                # These are close enough for UR10 and help with transfer.
-                assets_dir="gs://openpi-assets/checkpoints/pi0_fast_base/assets",
-                asset_id="ur5e",
-            ),
-        ),
-        # Load pi0.5 base weights for finetuning
-        weight_loader=weight_loaders.CheckpointWeightLoader(
-            "gs://openpi-assets/checkpoints/pi0_fast_base/params"
-        ),
-        num_train_steps=30_000,
-    ),
+    # TrainConfig(
+    #     name="pi05_ur10",
+    #     # model=pi0_fast.Pi0FASTConfig(),          # pi0.5 model
+    #     model=pi0_fast.Pi0FASTConfig(action_dim=7, action_horizon=10, max_token_len=180),
+    #     data=LeRobotUR10DataConfig(
+    #         repo_id="rudy8k/grasp_place",    # your HuggingFace dataset ID
+    #         base_config=DataConfig(
+    #             prompt_from_task=True,           # reads task string as language prompt
+    #         ),
+    #         assets=AssetsConfig(
+    #             # Reuse UR5e normalization stats from the pi0.5 base checkpoint.
+    #             # These are close enough for UR10 and help with transfer.
+    #             assets_dir="gs://openpi-assets/checkpoints/pi0_fast_base/assets",
+    #             asset_id="ur5e",
+    #         ),
+    #     ),
+    #     # Load pi0.5 base weights for finetuning
+    #     weight_loader=weight_loaders.CheckpointWeightLoader(
+    #         "gs://openpi-assets/checkpoints/pi0_fast_base/params"
+    #     ),
+    #     num_train_steps=30_000,
+    # ),
 
     # LoRA variant — much faster to train, good starting point for 40 episodes
     # pi05_ur10_lora = TrainConfig(
+
     TrainConfig(
         name="pi05_ur10_lora",
-        model=pi0_fast.Pi0FastConfig(
-            lora_rank=32,
-            lora_scale=1.0,
+        model=pi0_config.Pi0Config(
+            pi05=True,
+            # action_dim=7, action_horizon=10, max_token_len=180,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
         ),
         data=LeRobotUR10DataConfig(
-            repo_id="rudra-8000/grasp_place",
+            repo_id="rudy8k/grasp_place",
             base_config=DataConfig(prompt_from_task=True),
             assets=AssetsConfig(
+                # Reuse UR5e normalization stats from the pi0.5 base checkpoint.
+                # These are close enough for UR10 and help with transfer.
+                # assets_dir="gs://openpi-assets/checkpoints/pi0_base/assets",
+                # Make sure you're pointing to pi0_fast_base, not pi0_base
                 assets_dir="gs://openpi-assets/checkpoints/pi0_fast_base/assets",
                 asset_id="ur5e",
             ),
+            # default_prompt="grasp the object and place it in the box",
+            # repack_transforms=_transforms.Group(
+            #     inputs=[
+            #         _transforms.RepackTransform(
+            #             {
+            #                 "observation/exterior_image_1_left": "observation/image",
+            #                 "observation/wrist_image_left": "observation/wrist_image",
+            #                 "observation/joint_position": "observation/joint_position",
+            #                 "observation/gripper_position": "observation/gripper_position",
+            #                 "actions": "actions",
+            #                 "prompt": "prompt",
+            #             }
+            #         )
+            #     ]
+            # ),
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader(
+            # "gs://openpi-assets/checkpoints/pi0_base/params"
             "gs://openpi-assets/checkpoints/pi0_fast_base/params"
         ),
-        num_train_steps=10_000,   # LoRA converges faster; 10k is a good first run
+        num_train_steps=30_000,   # LoRA converges faster; 10k is a good first run
+        freeze_filter=pi0_config.Pi0Config(
+            pi05=True,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ).get_freeze_filter(),
+        ema_decay=None,
     ),
 
     # RoboArena & PolaRiS configs.

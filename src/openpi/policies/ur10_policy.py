@@ -49,6 +49,8 @@ class UR10Inputs(transforms.DataTransformFn):
             inputs["actions"] = np.asarray(data["actions"], dtype=np.float32)
         if "prompt" in data:
             inputs["prompt"] = data["prompt"]
+        if "prompt" not in data or not data["prompt"]:
+            inputs["prompt"] = "pick up the object and place it in the box"
 
         return inputs
 
