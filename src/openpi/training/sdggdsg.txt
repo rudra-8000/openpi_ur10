@@ -1,0 +1,23 @@
+# From inside your lerobot environment
+python -c "
+from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
+ds = LeRobotDataset('/home_local/rudra_1/rudra/lerobot/datasets/grasp_place')
+ds.push_to_hub('rudra-8000/grasp_place')
+"
+
+
+
+
+
+
+
+from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
+import numpy as np
+
+ds = LeRobotDataset("/home_local/rudra_1/rudra/lerobot/datasets/grasp_place")
+# Check a few samples to confirm state/action ranges (radians expected, ~±π)
+for i in [0, 100, 500]:
+    s = ds[i]
+    print(f"[{i}] state: {s['observation.state'].numpy()}")
+    print(f"[{i}] action: {s['action'].numpy()}")
+    print(f"[{i}] cam_high shape: {s['observation.images.cam_high'].shape}")
