@@ -1,12 +1,13 @@
 # src/openpi/policies/ur10_policy.py
 import dataclasses
 import numpy as np
+
 import openpi.models.model as _model
 import openpi.transforms as transforms
 
 
 def _parse_image(img):
-    """LeRobot stores images as float32 (C,H,W); convert to uint8 (H,W,C)."""
+    """LeRobot stores images as float32 (C,H,W); openpi expects uint8 (H,W,C)."""
     if isinstance(img, np.ndarray) and img.dtype != np.uint8:
         img = (img * 255).astype(np.uint8)
         img = np.transpose(img, (1, 2, 0))
@@ -15,32 +16,37 @@ def _parse_image(img):
 
 @dataclasses.dataclass(frozen=True)
 class UR10Inputs(transforms.DataTransformFn):
-    model_type: _model.ModelType = _model.ModelType.PI05
+    # action_dim is required by the framework when called from DataConfig
+    action_dim: int = 7
+    model_type: _model.ModelType = _model.ModelType.PI0_FAST  # pi0.5 = PI0_FAST
 
     def __call__(self, data: dict) -> dict:
-        state = np.concatenate([data["joints"], data["gripper"]])
+        # observation.state is already a flat (7,) vector: [j0..j5, gripper]
+        state = np.asarray(data["state"], dtype=np.float32)
 
-        base_image = _parse_image(data["top_rgb"])       # D415 top cam
-        wrist_image = _parse_image(data["wrist_rgb"])    # D435i wrist cam
+        # Images come in after repack — keys are "top_rgb" and "wrist_rgb"
+        top_image   = _parse_image(data["top_rgb"])   # D415 top camera
+        wrist_image = _parse_image(data["wrist_rgb"]) # D435i wrist camera
 
         inputs = {
             "state": state,
             "image": {
-                "base_0_rgb": base_image,
-                "left_wrist_0_rgb": wrist_image,
-                "right_wrist_0_rgb": np.zeros_like(base_image),
+                "base_0_rgb":        top_image,
+                "left_wrist_0_rgb":  wrist_image,
+                # No right wrist on UR10 — fill the slot with zeros
+                "right_wrist_0_rgb": np.zeros_like(top_image),
             },
             "image_mask": {
-                "base_0_rgb": np.True_,
+                "base_0_rgb":       np.True_,
                 "left_wrist_0_rgb": np.True_,
-                # π0.5 (PI05) uses the right-wrist slot too — set True
-                # so the model doesn't mask it out entirely
-                "right_wrist_0_rgb": np.True_ if self.model_type == _model.ModelType.PI05 else np.False_,
+                # pi0.5 (PI0_FAST) attends to all 3 image slots; set True so
+                # the model doesn't ignore it. For pi0 base set False instead.
+                "right_wrist_0_rgb": np.True_ if self.model_type == _model.ModelType.PI0_FAST else np.False_,
             },
         }
 
         if "actions" in data:
-            inputs["actions"] = data["actions"]
+            inputs["actions"] = np.asarray(data["actions"], dtype=np.float32)
         if "prompt" in data:
             inputs["prompt"] = data["prompt"]
 
@@ -50,5 +56,5 @@ class UR10Inputs(transforms.DataTransformFn):
 @dataclasses.dataclass(frozen=True)
 class UR10Outputs(transforms.DataTransformFn):
     def __call__(self, data: dict) -> dict:
-        # 7 dims: 6 joints + 1 gripper
-        return {"actions": np.asarray(data["actions"][:, :7])}
+        # 7 action dims: joint_0..joint_5 + gripper
+        return {"actions": np.asarray(data["actions"][:, :7], dtype=np.float32)}

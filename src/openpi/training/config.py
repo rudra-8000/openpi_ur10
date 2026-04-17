@@ -30,7 +30,7 @@ import openpi.training.weight_loaders as weight_loaders
 import openpi.transforms as _transforms
 
 ##change added by RUDRA
-from openpi.training.ur10_config import LeRobotUR10DataConfig
+from openpi.training import ur10_config as _ur10_config  # noqa: F401, E402
 
 ModelType: TypeAlias = _model.ModelType
 # Work around a tyro issue with using nnx.filterlib.Filter directly.
@@ -970,70 +970,50 @@ _CONFIGS = [
     ),
 
     ## UR10 config added by RUDRA
+
+    # pi05_ur10 = TrainConfig(
     TrainConfig(
-        name="pi05_ur10_grasp_place",
-        model=pi0_config.Pi0Config(
-            pi05=True,
-            action_horizon=10,
-            discrete_state_input=False,
-        ),
+        name="pi05_ur10",
+        model=pi0_fast.Pi0FastConfig(),          # pi0.5 model
         data=LeRobotUR10DataConfig(
-            repo_id="rudra-8000/grasp_place",   # your HF repo once you push
-            assets=AssetsConfig(
-                assets_dir="gs://openpi-assets/checkpoints/pi05_base/assets",
-                asset_id="ur5e",  # closest pretrained norm stats
+            repo_id="rudra-8000/grasp_place",    # your HuggingFace dataset ID
+            base_config=DataConfig(
+                prompt_from_task=True,           # reads task string as language prompt
             ),
-            base_config=DataConfig(prompt_from_task=True),
+            assets=AssetsConfig(
+                # Reuse UR5e normalization stats from the pi0.5 base checkpoint.
+                # These are close enough for UR10 and help with transfer.
+                assets_dir="gs://openpi-assets/checkpoints/pi0_fast_base/assets",
+                asset_id="ur5e",
+            ),
         ),
+        # Load pi0.5 base weights for finetuning
         weight_loader=weight_loaders.CheckpointWeightLoader(
-            "gs://openpi-assets/checkpoints/pi05_base/params"
+            "gs://openpi-assets/checkpoints/pi0_fast_base/params"
         ),
         num_train_steps=30_000,
-        batch_size=32,
-        lr_schedule=_optimizer.CosineDecaySchedule(
-            warmup_steps=1_000,
-            peak_lr=5e-5,
-            decay_steps=30_000,
-            decay_lr=1e-6,
-        ),
-        ema_decay=0.999,
     ),
 
-    # --- LoRA finetune (fits on a single 24GB GPU, e.g. RTX 4090/3090) ---
+    # LoRA variant — much faster to train, good starting point for 40 episodes
+    # pi05_ur10_lora = TrainConfig(
     TrainConfig(
-        name="pi05_ur10_grasp_place_lora",
-        model=pi0_config.Pi0Config(
-            pi05=True,
-            action_horizon=10,
-            discrete_state_input=False,
-            paligemma_variant="gemma_2b_lora",
-            action_expert_variant="gemma_300m_lora",
+        name="pi05_ur10_lora",
+        model=pi0_fast.Pi0FastConfig(
+            lora_rank=32,
+            lora_scale=1.0,
         ),
         data=LeRobotUR10DataConfig(
             repo_id="rudra-8000/grasp_place",
+            base_config=DataConfig(prompt_from_task=True),
             assets=AssetsConfig(
-                assets_dir="gs://openpi-assets/checkpoints/pi05_base/assets",
+                assets_dir="gs://openpi-assets/checkpoints/pi0_fast_base/assets",
                 asset_id="ur5e",
             ),
-            base_config=DataConfig(prompt_from_task=True),
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader(
-            "gs://openpi-assets/checkpoints/pi05_base/params"
+            "gs://openpi-assets/checkpoints/pi0_fast_base/params"
         ),
-        num_train_steps=30_000,
-        batch_size=16,          # reduce if still OOM
-        lr_schedule=_optimizer.CosineDecaySchedule(
-            warmup_steps=1_000,
-            peak_lr=2e-4,       # LoRA typically benefits from higher LR
-            decay_steps=30_000,
-            decay_lr=1e-5,
-        ),
-        freeze_filter=pi0_config.Pi0Config(
-            pi05=True,
-            paligemma_variant="gemma_2b_lora",
-            action_expert_variant="gemma_300m_lora",
-        ).get_freeze_filter(),
-        ema_decay=None,          # EMA off for LoRA
+        num_train_steps=10_000,   # LoRA converges faster; 10k is a good first run
     ),
 
     # RoboArena & PolaRiS configs.
