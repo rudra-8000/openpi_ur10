@@ -1,23 +1,83 @@
-# From inside your lerobot environment
-python -c "
-from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
-ds = LeRobotDataset('/home_local/rudra_1/rudra/lerobot/datasets/grasp_place')
-ds.push_to_hub('rudra-8000/grasp_place')
-"
+5:59:52.247 [I] [process=0][thread=save_finalize] Done with waiting for background save thread=async_save. (1438023:async_checkpointer.py:266)
+15:59:52.247 [I] [process=0][thread=save_finalize] No errors found in background save thread=async_save. (1438023:async_checkpointer.py:276)
+15:59:52.508 [I] Deleted step 27000.                                                              (1438023:deleter.py:114)
+15:59:52.508 [I] [process=0][thread=save_finalize][step=28000] CheckpointManager Save Finalize is syncing with other hosts... (1438023:checkpoint_manager.py:2095)
+15:59:52.508 [I] [process=0][thread=save_finalize][step=28000] CheckpointManager Save Finalize is done on all hosts. (1438023:checkpoint_manager.py:2110)
+Step 28100: grad_norm=0.0375, loss=0.0008, param_norm=1380.8473                                                                                                                                                                            
+Step 28200: grad_norm=0.0383, loss=0.0009, param_norm=1380.8474                                                                                                                                                                            
+Step 28300: grad_norm=0.0370, loss=0.0009, param_norm=1380.8477                                                                                                                                                                            
+Step 28400: grad_norm=0.0412, loss=0.0009, param_norm=1380.8479                                                                                                                                                                            
+Step 28500: grad_norm=0.0376, loss=0.0008, param_norm=1380.8479                                                                                                                                                                            
+Step 28600: grad_norm=0.0373, loss=0.0009, param_norm=1380.8481                                                                                                                                                                            
+Step 28700: grad_norm=0.0395, loss=0.0009, param_norm=1380.8483                                                                                                                                                                            
+Step 28800: grad_norm=0.0355, loss=0.0008, param_norm=1380.8485                                                                                                                                                                            
+Step 28900: grad_norm=0.0382, loss=0.0008, param_norm=1380.8488                                                                                                                                                                            
+Step 29000: grad_norm=0.0388, loss=0.0009, param_norm=1380.8490                                                                                                                                                                            
+ 97%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊      | 29000/30000 [22:22:26<1:18:49,  4.73s/it]17:18:49.618 [I] [process=0][thread=MainThread][wait_until_finished] No Save Finalize thread to wait for. Returning. (1438023:checkpoint_manager.py:1987)
+17:18:49.618 [I] [process=0] Saving checkpoint at step 29000                                      (1438023:checkpoint_manager.py:1408)
+17:18:49.618 [I] [process=0] Started async saving checkpoint to /home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000. (1438023:async_checkpointer.py:439)
+17:18:49.628 [I] Creating tmp directory /home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000.orbax-checkpoint-tmp-64 (1438023:atomicity.py:144)
+17:18:49.630 [I] Transferring arrays to host memory with options: use_replica_parallel=True, enable_pinned_host_transfer=False (1438023:replica_slices.py:341)
+17:18:49.636 [I] Creating tmp directory /home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000.orbax-checkpoint-tmp-64/assets.orbax-checkpoint-tmp-65 (1438023:atomicity.py:144)
+17:18:49.636 [I] Creating tmp directory /home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000.orbax-checkpoint-tmp-64/params.orbax-checkpoint-tmp-66 (1438023:atomicity.py:144)
+17:18:49.637 [I] Creating tmp directory /home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000.orbax-checkpoint-tmp-64/train_state.orbax-checkpoint-tmp-67 (1438023:atomicity.py:144)
+17:18:50.767 [I] Transferring arrays to host memory with options: use_replica_parallel=True, enable_pinned_host_transfer=False (1438023:replica_slices.py:341)
+17:18:50.786 [I] [process=0][thread=array_type_handler] Wrote 70 array_metadata.ArrayMetadata to /home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000.orbax-checkpoint-tmp-64/params.orbax-checkpoint-tmp-66/array_metadatas/process_0 (1438023:array_metadata_store.py:198)
+17:18:51.558 [I] [process=0] /jax/checkpoint/write/blocking_bytes_per_sec: 3.6 GiB/s (total bytes: 7.0 GiB) (time elapsed: a second) (per-host) (1438023:base_pytree_checkpoint_handler.py:114)
+17:18:51.560 [I] [process=0] /jax/checkpoint/write/blocking_bytes_per_sec: 1.8 GiB/s (total bytes: 3.5 GiB) (time elapsed: a second) (per-host) (1438023:base_pytree_checkpoint_handler.py:114)
+17:18:51.567 [I] [process=0][thread=async_save] Background save thread started.                   (1438023:async_checkpointer.py:77)
+17:18:51.567 [I] Finished blocking save in 1.95 seconds. Continuing to save asynchronously to /home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000. (1438023:async_checkpointer.py:548)
+17:18:51.568 [I] Preserving Checkpoint[step=5000 | time=2026-04-17 21:46:59.297365+00:00]: (Reason: on keep_period=5000). (1438023:checkpoint_manager.py:1949)
+17:18:51.568 [I] Preserving Checkpoint[step=10000 | time=2026-04-18 07:26:22.049887+00:00]: (Reason: on keep_period=5000). (1438023:checkpoint_manager.py:1949)
+17:18:51.568 [I] Preserving Checkpoint[step=15000 | time=2026-04-18 14:53:08.616953+00:00]: (Reason: on keep_period=5000). (1438023:checkpoint_manager.py:1949)
+17:18:51.568 [I] Preserving Checkpoint[step=20000 | time=2026-04-18 21:27:54.080707+00:00]: (Reason: on keep_period=5000). (1438023:checkpoint_manager.py:1949)
+17:18:51.568 [I] Preserving Checkpoint[step=25000 | time=2026-04-19 04:02:49.081536+00:00]: (Reason: on keep_period=5000). (1438023:checkpoint_manager.py:1949)
+17:18:51.568 [I] Deleting Checkpoint[step=28000 | time=2026-04-19 07:59:49.703667+00:00]: (Reason: old checkpoint). (1438023:checkpoint_manager.py:1963)
+17:18:51.568 [I] [process=0][thread=MainThread][step=29000] Starting CheckpointManager Save Finalize thread=save_finalize (1438023:checkpoint_manager.py:1453)
+17:18:51.568 [I] [process=0][thread=save_finalize] Waiting for background save thread=async_save. (1438023:async_checkpointer.py:258)
+17:18:51.568 [I] {'step': 29000, 'event_type': 'save', 'directory': '/home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10', 'reached_preemption': False, 'preemption_received_at': None, 'synchronous': False, 'wait_for_prev_start_time': 1776590329.618262, 'wait_for_prev_duration_secs': 7.224082946777344e-05, 'checkpointer_blocking_start_time': 1776590329.6184835, 'checkpointer_blocking_duration_secs': 1.9494783878326416, 'get_old_steps_start_time': 1776590331.567978, 'get_old_steps_duration_secs': 0.00024771690368652344, 'checkpoint_manager_blocking_start_time': 1776590329.618189, 'checkpoint_manager_blocking_duration_secs': 1.9504303932189941} (1438023:standard_logger.py:34)
+ 97%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊      | 29001/30000 [22:22:28<1:51:31,  6.70s/it]17:18:51.574 [I] [process=0][thread=array_type_handler] Wrote 109 array_metadata.ArrayMetadata to /home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000.orbax-checkpoint-tmp-64/train_state.orbax-checkpoint-tmp-67/array_metadatas/process_0 (1438023:array_metadata_store.py:198)
+ 97%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊      | 29002/30000 [22:22:28<1:19:13,  4.76s/it]17:18:53.544 [I] [process=0] /jax/checkpoint/write/bytes_per_sec: 1.8 GiB/s (total bytes: 7.0 GiB) (time elapsed: 3 seconds) (per-host) (1438023:base_pytree_checkpoint_handler.py:114)
+17:18:53.593 [I] [process=0] /jax/checkpoint/write/bytes_per_sec: 899.4 MiB/s (total bytes: 3.5 GiB) (time elapsed: 3 seconds) (per-host) (1438023:base_pytree_checkpoint_handler.py:114)
+17:18:53.593 [I] [process=0][thread=async_save] 5 Handler Commit operations completed.            (1438023:async_checkpointer.py:87)
+17:18:53.594 [I] Renaming /home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000.orbax-checkpoint-tmp-64/assets.orbax-checkpoint-tmp-65 to /home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000.orbax-checkpoint-tmp-64/assets (1438023:atomicity.py:289)
+17:18:53.595 [I] [process=0][thread=async_save] Skipped cross-host ArrayMetadata validation because only one process is found: process_index=0. (1438023:array_metadata_store.py:362)
+17:18:53.607 [I] Renaming /home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000.orbax-checkpoint-tmp-64/train_state.orbax-checkpoint-tmp-67 to /home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000.orbax-checkpoint-tmp-64/train_state (1438023:atomicity.py:289)
+17:18:53.608 [I] [process=0][thread=async_save] Skipped cross-host ArrayMetadata validation because only one process is found: process_index=0. (1438023:array_metadata_store.py:362)
+17:18:53.614 [I] Renaming /home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000.orbax-checkpoint-tmp-64/params.orbax-checkpoint-tmp-66 to /home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000.orbax-checkpoint-tmp-64/params (1438023:atomicity.py:289)
+17:18:53.614 [I] Renaming /home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000.orbax-checkpoint-tmp-64 to /home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000 (1438023:atomicity.py:289)
+17:18:53.615 [I] [process=0][thread=async_save] Finished saving checkpoint (finalized tmp dir) to `/home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000`. (1438023:atomicity.py:573)
+17:18:53.615 [I] Finished asynchronous save (blocking + background) in 4.00 seconds to /home_local/rudra_1/rudra/openpi/checkpoints/pi05_ur10_lora/pi05_lora_ur10/29000 (1438023:async_checkpointer.py:412)
+17:18:53.615 [I] [process=0][thread=async_save] Background save thread done.                      (1438023:async_checkpointer.py:143)
+17:18:53.615 [I] [process=0][thread=save_finalize] Done with waiting for background save thread=async_save. (1438023:async_checkpointer.py:266)
+17:18:53.615 [I] [process=0][thread=save_finalize] No errors found in background save thread=async_save. (1438023:async_checkpointer.py:276)
+17:18:53.865 [I] Deleted step 28000.                                                              (1438023:deleter.py:114)
+17:18:53.865 [I] [process=0][thread=save_finalize][step=29000] CheckpointManager Save Finalize is syncing with other hosts... (1438023:checkpoint_manager.py:2095)
+17:18:53.865 [I] [process=0][thread=save_finalize][step=29000] CheckpointManager Save Finalize is done on all hosts. (1438023:checkpoint_manager.py:2110)
+Step 29100: grad_norm=0.0376, loss=0.0008, param_norm=1380.8490                                                                                                                                                                            
+Step 29200: grad_norm=0.0373, loss=0.0009, param_norm=1380.8494                                                                                                                                                                            
+Step 29300: grad_norm=0.0367, loss=0.0008, param_norm=1380.8496                                                                                                                                                                            
+Step 29400: grad_norm=0.0387, loss=0.0008, param_norm=1380.8496                                                                                                                                                                            
+Step 29500: grad_norm=0.0384, loss=0.0008, param_norm=1380.8500                                                                                                                                                                            
+Step 29600: grad_norm=0.0371, loss=0.0008, param_norm=1380.8500                                                                                                                                                                            
+ 99%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████  | 29699/30000 [23:17:32<23:49,  4.75s/it]Step 29700: grad_norm=0.0372, loss=0.0009, param_norm=1380.8503                                                                                                                                                                            
+Step 29800: grad_norm=0.0401, loss=0.0009, param_norm=1380.8503                                                                                                                                                                            
+Step 29900: grad_norm=0.0348, loss=0.0008, param_norm=1380.8506                                                                                                                                                                            
 
 
 
 
 
 
-
-from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
-import numpy as np
-
-ds = LeRobotDataset("/home_local/rudra_1/rudra/lerobot/datasets/grasp_place")
-# Check a few samples to confirm state/action ranges (radians expected, ~±π)
-for i in [0, 100, 500]:
-    s = ds[i]
-    print(f"[{i}] state: {s['observation.state'].numpy()}")
-    print(f"[{i}] action: {s['action'].numpy()}")
-    print(f"[{i}] cam_high shape: {s['observation.images.cam_high'].shape}")
+Step 0: grad_norm=3.1375, loss=0.3741, param_norm=1380.8510                                                                                                                                                      
+Step 100: grad_norm=2.3634, loss=0.2683, param_norm=1380.8510                                                                                                                                                    
+Step 200: grad_norm=0.3359, loss=0.0420, param_norm=1380.8506                                                                                                                                                    
+Step 300: grad_norm=0.0821, loss=0.0080, param_norm=1380.8503                                                                                                                                                    
+Step 400: grad_norm=0.0749, loss=0.0044, param_norm=1380.8510                                                                                                                                                    
+Step 500: grad_norm=0.0771, loss=0.0038, param_norm=1380.8524                                                                                                                                                    
+Step 600: grad_norm=0.0871, loss=0.0036, param_norm=1380.8545                                                                                                                                                    
+Step 700: grad_norm=0.0991, loss=0.0036, param_norm=1380.8572                                                                                                                                                    
+Step 800: grad_norm=0.1002, loss=0.0037, param_norm=1380.8610                                                                                                                                                    
+Step 900: grad_norm=0.1029, loss=0.0036, param_norm=1380.8657                                                                                                                                                    
+Step 1000: grad_norm=0.1061, loss=0.0038, param_norm=1380.8717                                                                                                                                                   
+ 20%|████████████████████████████████▊                           

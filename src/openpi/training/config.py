@@ -252,7 +252,7 @@ class LeRobotUR10DataConfig(DataConfigFactory):
                         "observation.images.cam_high":        "observation.images.cam_high",
                         "observation.images.cam_right_wrist": "observation.images.cam_right_wrist",
                         "observation.state":                  "observation.state",
-                        "action":                             "actions",
+                        "actions":                            "action",   # ← NEW="actions", OLD="action"
                         "prompt":                             "prompt",
                     }
                 )
@@ -1063,7 +1063,7 @@ _CONFIGS = [
     TrainConfig(
         name="pi05_ur10_lora",
         model=pi0_config.Pi0Config(
-            pi05=True,
+            # pi05=True,
             # action_dim=7, action_horizon=10, max_token_len=180,
             paligemma_variant="gemma_2b_lora",
             action_expert_variant="gemma_300m_lora",
@@ -1076,10 +1076,14 @@ _CONFIGS = [
                 action_sequence_keys=("action",),  # ← add this
             ),
             assets=AssetsConfig(
-                assets_dir="gs://openpi-assets/checkpoints/pi0_fast_base/assets",
-                asset_id="ur5e",
-                # local_dir="/home_local/rudra_1/.cache/huggingface/hub/datasets--rudy8k--grasp_place/snapshots/3c881d3c002d680a2550a8876ca08249b721d23d",
+                assets_dir="/home_local/rudra_1/rudra/data/grasp_place_v21",
+                asset_id="pi05_ur10_lora",
             ),
+            # assets=AssetsConfig(
+            #     assets_dir="gs://openpi-assets/checkpoints/pi0_base/assets",
+            #     asset_id="ur5e",
+            #     # local_dir="/home_local/rudra_1/.cache/huggingface/hub/datasets--rudy8k--grasp_place/snapshots/3c881d3c002d680a2550a8876ca08249b721d23d",
+            # ),
         ),
         # data=LeRobotUR10DataConfig(
         #     repo_id="rudy8k/grasp_place",
@@ -1097,12 +1101,67 @@ _CONFIGS = [
         #     ),
         # ),
         weight_loader=weight_loaders.CheckpointWeightLoader(
-            # "gs://openpi-assets/checkpoints/pi0_base/params"
-            "gs://openpi-assets/checkpoints/pi0_fast_base/params"
+            "gs://openpi-assets/checkpoints/pi0_base/params"
+            # "gs://openpi-assets/checkpoints/pi0_fast_base/params"
         ),
         num_train_steps=30_000,   # LoRA converges faster; 10k is a good first run
         freeze_filter=pi0_config.Pi0Config(
-            pi05=True,
+            # pi05=True,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ).get_freeze_filter(),
+        ema_decay=None,
+    ),
+
+    TrainConfig(
+        name="pi0_ur10_lora_corrected",
+        model=pi0_config.Pi0Config(
+            # pi05=True,
+            # action_dim=7, action_horizon=10, max_token_len=180,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ),
+        data=LeRobotUR10DataConfig(
+            # repo_id="rudy8k/grasp_place",
+            repo_id="/home_local/rudra_1/rudra/data/grasp_place_v21",
+            base_config=DataConfig(
+                prompt_from_task=True,
+                action_sequence_keys=("action",),  # ← add this
+            ),
+            assets=AssetsConfig(
+                assets_dir="/home_local/rudra_1/rudra/data/grasp_place_v21",
+                asset_id="pi05_ur10_lora",
+            ),
+            # assets=AssetsConfig(
+            #     assets_dir="gs://openpi-assets/checkpoints/pi0_base/assets",
+            #     asset_id="ur5e",
+            #     # local_dir="/home_local/rudra_1/.cache/huggingface/hub/datasets--rudy8k--grasp_place/snapshots/3c881d3c002d680a2550a8876ca08249b721d23d",
+            # ),
+        ),
+        # data=LeRobotUR10DataConfig(
+        #     repo_id="rudy8k/grasp_place",
+        #     base_config=DataConfig(
+        #         prompt_from_task=True,
+        #         # local_dir="/home_local/rudra_1/rudra/data/grasp_place_converted",
+        #     ),
+        #     assets=AssetsConfig(
+        #         # Reuse UR5e normalization stats from the pi0.5 base checkpoint.
+        #         # These are close enough for UR10 and help with transfer.
+        #         # assets_dir="gs://openpi-assets/checkpoints/pi0_base/assets",
+        #         # Make sure you're pointing to pi0_fast_base, not pi0_base
+        #         assets_dir="gs://openpi-assets/checkpoints/pi0_fast_base/assets",
+        #         asset_id="ur5e",
+        #     ),
+        # ),
+        weight_loader=weight_loaders.CheckpointWeightLoader(
+            "./checkpoints/pi05_ur10_lora/pi05_lora_ur10/29999/params"
+            # "gs://openpi-assets/checkpoints/pi0_base/params"
+            # "gs://openpi-assets/checkpoints/pi0_fast_base/params"
+        ),
+        num_train_steps=7_000,   # LoRA converges faster; 5k is a good first run
+        batch_size=96,
+        freeze_filter=pi0_config.Pi0Config(
+            # pi05=True,
             paligemma_variant="gemma_2b_lora",
             action_expert_variant="gemma_300m_lora",
         ).get_freeze_filter(),
