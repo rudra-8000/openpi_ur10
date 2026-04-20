@@ -82,32 +82,45 @@ def _build_robot(args: argparse.Namespace):
     return robot
 
 
-def smooth_move_home(robot, home_rad=HOME_RAD, steps: int = 100, duration: float = 5.0) -> None:
-    """
-    Linearly interpolate from current joint positions to home over `duration` seconds.
-    Uses servoJ so the motion stays within the RTDE control loop.
-    """
-    import rtde_receive
+# def smooth_move_home(robot, home_rad=HOME_RAD, steps: int = 100, duration: float = 5.0) -> None:
+#     """
+#     Linearly interpolate from current joint positions to home over `duration` seconds.
+#     Uses servoJ so the motion stays within the RTDE control loop.
+#     """
+#     import rtde_receive
 
-    current = list(robot.rtde_rec.getActualQ())
-    target  = list(home_rad)
-    dt      = duration / steps
-    logger.info("Moving to home: %s (%.1f s)", [f"{np.rad2deg(v):.1f}" for v in target], duration)
-    for i in range(1, steps + 1):
-        alpha = i / steps
-        interp = [current[j] + alpha * (target[j] - current[j]) for j in range(6)]
-        robot.rtde_ctrl.servoJ(
-            interp,
-            robot.speed,
-            robot.acc,
-            robot.servoj_t,
-            robot.servoj_lookahead,
-            robot.servoj_gain,
-        )
-        time.sleep(dt)
-    # Final blocking moveJ to guarantee convergence
-    robot.rtde_ctrl.moveJ(list(home_rad), speed=0.5, acceleration=0.3)
+#     current = list(robot.rtde_rec.getActualQ())
+#     target  = list(home_rad)
+#     dt      = duration / steps
+#     logger.info("Moving to home: %s (%.1f s)", [f"{np.rad2deg(v):.1f}" for v in target], duration)
+#     for i in range(1, steps + 1):
+#         alpha = i / steps
+#         interp = [current[j] + alpha * (target[j] - current[j]) for j in range(6)]
+#         robot.rtde_ctrl.servoJ(
+#             interp,
+#             robot.speed,
+#             robot.acc,
+#             robot.servoj_t,
+#             robot.servoj_lookahead,
+#             robot.servoj_gain,
+#         )
+#         time.sleep(dt)
+#     # Final blocking moveJ to guarantee convergence
+#     robot.rtde_ctrl.moveJ(list(home_rad), speed=0.5, acceleration=0.3)
+#     logger.info("Home reached.")
+def smooth_move_home(robot, home_rad=HOME_RAD, steps: int = 100, duration: float = 5.0) -> None:
+    # Stop any lingering servoJ session first
+    try:
+        robot.rtde_ctrl.servoStop()
+        time.sleep(0.2)
+    except Exception:
+        pass
+
+    # Then do the moveJ (blocking, no servoJ needed for homing)
+    logger.info("Moving to home: %s", [f"{np.rad2deg(v):.1f}°" for v in home_rad])
+    robot.rtde_ctrl.moveJ(list(home_rad), speed=0.3, acceleration=0.3)
     logger.info("Home reached.")
+
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -191,6 +204,14 @@ async def _run(args: argparse.Namespace) -> None:
         robot = _build_robot(args)
         robot.connect()
         logger.info("Robot connected.")
+        try:
+            robot.rtde_ctrl.stopScript()
+            time.sleep(0.5)
+            robot.rtde_ctrl.reuploadScript()  # re-upload fresh control script
+            time.sleep(0.5)
+            logger.info("RTDE control script reset.")
+        except Exception as e:
+            logger.warning("Could not reset RTDE script (may be fine): %s", e)
 
     video_dir = Path(args.video_dir).expanduser() if args.video_dir else None
     if video_dir:
@@ -209,9 +230,11 @@ async def _run(args: argparse.Namespace) -> None:
             meta_raw = await ws.recv()
             meta = msgpack_numpy.unpackb(meta_raw)
             logger.info("Server handshake: %s", meta)
-            if meta.get("protocol") not in ("openpi_v1", "lerobot_policy_v1"):
-                logger.warning("Unexpected protocol %r — continuing.", meta.get("protocol"))
-
+            # if meta.get("protocol") not in ("openpi_v1", "lerobot_policy_v1"):
+            #     logger.warning("Unexpected protocol %r — continuing.", meta.get("protocol"))
+            proto = meta.get("protocol")
+            if proto and proto not in ("openpi_v1", "lerobot_policy_v1"):
+                logger.warning("Unexpected protocol %r — continuing.", proto)
             loop = asyncio.get_running_loop()
 
             for rollout in range(num_rollouts):
@@ -254,13 +277,27 @@ async def _run(args: argparse.Namespace) -> None:
 
                     # ── Send to server ────────────────────────────────────
                     payload = _obs_to_payload(raw_obs)
-                    msg: dict[str, Any] = {"observation": payload}
+                    # msg: dict[str, Any] = {"observation": payload}
+                    # if args.task:
+                    #     msg["task"] = args.task
+                    # await ws.send(packer.pack(msg))
                     if args.task:
-                        msg["task"] = args.task
-                    await ws.send(packer.pack(msg))
-
+                        payload["prompt"] = args.task
+                    await ws.send(packer.pack(payload))
                     # ── Receive action ────────────────────────────────────
-                    resp = msgpack_numpy.unpackb(await ws.recv())
+                    raw_resp = await ws.recv()
+
+                    # Server may send plain-text error strings (websockets library default)
+                    if isinstance(raw_resp, str):
+                        raise RuntimeError(f"Server sent text frame (likely an error): {raw_resp}")
+
+                    resp = msgpack_numpy.unpackb(raw_resp)
+                    if not isinstance(resp, dict):
+                        raise RuntimeError(f"Bad response type: {type(resp)}")
+                    if "error" in resp:
+                        raise RuntimeError(f"Server error: {resp['error']}")
+
+                    # resp = msgpack_numpy.unpackb(await ws.recv())
                     if not isinstance(resp, dict):
                         raise RuntimeError(f"Bad response: {type(resp)}")
                     if "error" in resp:
