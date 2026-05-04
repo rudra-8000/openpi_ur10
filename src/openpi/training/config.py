@@ -580,7 +580,7 @@ class TrainConfig:
     # How often (in steps) to save checkpoints.
     save_interval: int = 1000
     # If set, any existing checkpoints matching step % keep_period == 0 will not be deleted.
-    keep_period: int | None = 5000
+    keep_period: int | None = 3000
 
     # If true, will overwrite the checkpoint directory if it already exists.
     overwrite: bool = False
@@ -1104,7 +1104,7 @@ _CONFIGS = [
             "gs://openpi-assets/checkpoints/pi0_base/params"
             # "gs://openpi-assets/checkpoints/pi0_fast_base/params"
         ),
-        num_train_steps=30_000,   # LoRA converges faster; 10k is a good first run
+        num_train_steps=10_000,   # LoRA converges faster; 10k is a good first run
         freeze_filter=pi0_config.Pi0Config(
             # pi05=True,
             paligemma_variant="gemma_2b_lora",
@@ -1113,10 +1113,13 @@ _CONFIGS = [
         ema_decay=None,
     ),
 
+    # CUDA_VISIBLE_DEVICES=0,1 LEROBOT_VIDEO_BACKEND=pyav XLA_PYTHON_CLIENT_MEM_FRACTION=0.86 uv run scripts/train.py pi0_ur10_lora_corrected \
+    #    --exp-name pi0_lora_ur10_corrected \
+    #    --no-wandb-enabled --batch-size 96
     TrainConfig(
         name="pi0_ur10_lora_corrected",
         model=pi0_config.Pi0Config(
-            # pi05=True,
+            pi05=True,
             # action_dim=7, action_horizon=10, max_token_len=180,
             paligemma_variant="gemma_2b_lora",
             action_expert_variant="gemma_300m_lora",
@@ -1138,27 +1141,12 @@ _CONFIGS = [
             #     # local_dir="/home_local/rudra_1/.cache/huggingface/hub/datasets--rudy8k--grasp_place/snapshots/3c881d3c002d680a2550a8876ca08249b721d23d",
             # ),
         ),
-        # data=LeRobotUR10DataConfig(
-        #     repo_id="rudy8k/grasp_place",
-        #     base_config=DataConfig(
-        #         prompt_from_task=True,
-        #         # local_dir="/home_local/rudra_1/rudra/data/grasp_place_converted",
-        #     ),
-        #     assets=AssetsConfig(
-        #         # Reuse UR5e normalization stats from the pi0.5 base checkpoint.
-        #         # These are close enough for UR10 and help with transfer.
-        #         # assets_dir="gs://openpi-assets/checkpoints/pi0_base/assets",
-        #         # Make sure you're pointing to pi0_fast_base, not pi0_base
-        #         assets_dir="gs://openpi-assets/checkpoints/pi0_fast_base/assets",
-        #         asset_id="ur5e",
-        #     ),
-        # ),
         weight_loader=weight_loaders.CheckpointWeightLoader(
-            "./checkpoints/pi05_ur10_lora/pi05_lora_ur10/29999/params"
+            "./checkpoints/pi05_ur10_lora/pi05_lora_ur10/15000/params"
             # "gs://openpi-assets/checkpoints/pi0_base/params"
             # "gs://openpi-assets/checkpoints/pi0_fast_base/params"
         ),
-        num_train_steps=7_000,   # LoRA converges faster; 5k is a good first run
+        num_train_steps=5_000,   # LoRA converges faster; 5k is a good first run
         batch_size=96,
         freeze_filter=pi0_config.Pi0Config(
             # pi05=True,

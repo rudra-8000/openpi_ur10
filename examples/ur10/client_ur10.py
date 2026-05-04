@@ -75,8 +75,8 @@ def _build_robot(args: argparse.Namespace):
         )
         for name, serial in CAM_SERIALS.items()
     }
-
-    robot_cfg = UR10Config(ip=args.ur_ip)
+    gripper = "/dev/serial/by-id/usb-FTDI_USB__-__Serial_Converter_FTAO51RF-if00-port0"
+    robot_cfg = UR10Config(ip=args.ur_ip, gripper_port=gripper)
     robot = make_robot_from_config(robot_cfg)
     robot.cameras = make_cameras_from_configs(cam_cfgs)
     return robot
@@ -149,16 +149,25 @@ def _obs_to_payload(raw_obs: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def _unpack_action(resp: dict) -> dict[str, float]:
-    """
-    The OpenPi server returns {"action": {"joint_0": ..., ..., "gripper": ...}}.
-    Validate and return the flat action dict.
-    """
-    action = resp.get("action")
-    if action is None:
-        raise RuntimeError(f"No 'action' in server response. Keys: {list(resp.keys())}")
-    # action may come back as a dict of numpy scalars — normalise to float
-    return {k: float(v) for k, v in action.items()}
+def _unpack_action(resp: dict) -> np.ndarray:
+    # UR10Outputs returns flat joint keys directly, not nested under "action"
+    joint_keys = [f"joint_{i}" for i in range(6)]
+    if all(k in resp for k in joint_keys):
+        joints  = np.array([resp[k] for k in joint_keys], dtype=np.float32)
+        gripper = np.array([resp["gripper"]], dtype=np.float32)
+        return np.concatenate([joints, gripper])   # shape (7,)
+    raise RuntimeError(f"No 'action' in server response. Keys: {list(resp.keys())}")
+
+# def _unpack_action(resp: dict) -> dict[str, float]:
+#     """
+#     The OpenPi server returns {"action": {"joint_0": ..., ..., "gripper": ...}}.
+#     Validate and return the flat action dict.
+#     """
+#     action = resp.get("action")
+#     if action is None:
+#         raise RuntimeError(f"No 'action' in server response. Keys: {list(resp.keys())}")
+#     # action may come back as a dict of numpy scalars — normalise to float
+#     return {k: float(v) for k, v in action.items()}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -189,7 +198,8 @@ def _side_by_side(raw_obs: dict, keys: list[str]) -> np.ndarray | None:
 
 async def _run(args: argparse.Namespace) -> None:
     try:
-        import msgpack_numpy
+        # import msgpack_numpy
+        from openpi_client import msgpack_numpy
         from websockets.asyncio.client import connect
     except ImportError as e:
         raise ImportError("pip install websockets msgpack-numpy") from e
@@ -213,6 +223,22 @@ async def _run(args: argparse.Namespace) -> None:
         except Exception as e:
             logger.warning("Could not reset RTDE script (may be fine): %s", e)
 
+    # At the top of _run(), after building the robot:
+    import threading
+    gripper_lock = threading.Lock()
+
+    # Patch send_action to use the lock:
+    _orig_send = robot.send_action
+    def _safe_send(action):
+        with gripper_lock:
+            _orig_send(action)
+
+    # Patch get_observation to use the lock:
+    _orig_obs = robot.get_observation
+    def _safe_obs():
+        with gripper_lock:
+            return _orig_obs()
+            
     video_dir = Path(args.video_dir).expanduser() if args.video_dir else None
     if video_dir:
         video_dir.mkdir(parents=True, exist_ok=True)
@@ -265,7 +291,8 @@ async def _run(args: argparse.Namespace) -> None:
 
                     # ── Observation ───────────────────────────────────────
                     if robot is not None:
-                        raw_obs = await asyncio.to_thread(robot.get_observation)
+                        # raw_obs = await asyncio.to_thread(robot.get_observation)
+                        raw_obs = await asyncio.to_thread(_safe_obs)
                     else:
                         # Fake obs for dry-run
                         raw_obs = {
@@ -281,9 +308,11 @@ async def _run(args: argparse.Namespace) -> None:
                     # if args.task:
                     #     msg["task"] = args.task
                     # await ws.send(packer.pack(msg))
+                    
                     if args.task:
                         payload["prompt"] = args.task
                     await ws.send(packer.pack(payload))
+
                     # ── Receive action ────────────────────────────────────
                     raw_resp = await ws.recv()
 
@@ -291,19 +320,18 @@ async def _run(args: argparse.Namespace) -> None:
                     if isinstance(raw_resp, str):
                         raise RuntimeError(f"Server sent text frame (likely an error): {raw_resp}")
 
+                    # resp = _unpackb(raw_resp)
                     resp = msgpack_numpy.unpackb(raw_resp)
                     if not isinstance(resp, dict):
                         raise RuntimeError(f"Bad response type: {type(resp)}")
                     if "error" in resp:
                         raise RuntimeError(f"Server error: {resp['error']}")
 
-                    # resp = msgpack_numpy.unpackb(await ws.recv())
-                    if not isinstance(resp, dict):
-                        raise RuntimeError(f"Bad response: {type(resp)}")
-                    if "error" in resp:
-                        raise RuntimeError(f"Server error: {resp['error']}")
-
-                    action = _unpack_action(resp)
+                    # ── Unpack action from flat joint keys ────────────────
+                    action = {
+                        **{f"joint_{i}": float(resp[f"joint_{i}"]) for i in range(6)},
+                        "gripper": float(resp["gripper"]),
+                    }
 
                     if args.log_every > 0 and step % args.log_every == 0:
                         st = resp.get("server_timing") or {}
@@ -314,6 +342,40 @@ async def _run(args: argparse.Namespace) -> None:
                             action.get("gripper", 0),
                             st.get("infer_ms", -1),
                         )
+                    
+                    # if args.task:
+                    #     payload["prompt"] = args.task
+                    # await ws.send(packer.pack(payload))
+                    # # ── Receive action ────────────────────────────────────
+                    # raw_resp = await ws.recv()
+
+                    # # Server may send plain-text error strings (websockets library default)
+                    # if isinstance(raw_resp, str):
+                    #     raise RuntimeError(f"Server sent text frame (likely an error): {raw_resp}")
+
+                    # resp = msgpack_numpy.unpackb(raw_resp)
+                    # if not isinstance(resp, dict):
+                    #     raise RuntimeError(f"Bad response type: {type(resp)}")
+                    # if "error" in resp:
+                    #     raise RuntimeError(f"Server error: {resp['error']}")
+
+                    # # resp = msgpack_numpy.unpackb(await ws.recv())
+                    # if not isinstance(resp, dict):
+                    #     raise RuntimeError(f"Bad response: {type(resp)}")
+                    # if "error" in resp:
+                    #     raise RuntimeError(f"Server error: {resp['error']}")
+
+                    # action = _unpack_action(resp)
+
+                    # if args.log_every > 0 and step % args.log_every == 0:
+                    #     st = resp.get("server_timing") or {}
+                    #     joints = [f"{np.rad2deg(action.get(f'joint_{i}', 0)):.1f}°" for i in range(6)]
+                    #     logger.info(
+                    #         "[r%d s%d] joints=%s gripper=%.3f infer_ms=%.1f",
+                    #         rollout, step, joints,
+                    #         action.get("gripper", 0),
+                    #         st.get("infer_ms", -1),
+                    #     )
 
                     # ── Record video ──────────────────────────────────────
                     if vid_path is not None:
@@ -334,7 +396,9 @@ async def _run(args: argparse.Namespace) -> None:
 
                     # ── Execute action ────────────────────────────────────
                     if robot is not None:
-                        await asyncio.to_thread(robot.send_action, action)
+                        # await asyncio.to_thread(robot.send_action, action)
+                        await asyncio.to_thread(_safe_send, action)
+
 
                     step += 1
 
